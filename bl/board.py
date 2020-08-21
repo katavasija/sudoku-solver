@@ -89,15 +89,17 @@ class CellAggregator(object):
 
     def add_cell(self, cell):
         self.cells.append(cell)
-        if cell.value:
+        if cell.value and cell.value in self.value_variants:
             self.value_variants.remove(cell.value)
 
     # recalculate available value variants for cells without value
-    def recalculate_value_variants(self, full_recalculation=False):
-        if full_recalculation:
+    def recalculate_value_variants(self, cell_value):
+        if not cell_value:
             self.value_variants = set(init_value_variants())
 
         for c in self.cells:
+            if cell_value and cell_value in c.value_variants:
+                c.value_variants.remove(cell_value)
             if c.value and c.value in self.value_variants:
                 self.value_variants.remove(c.value)
 
@@ -108,9 +110,10 @@ class Board(object):
         # square index (1-9) (from left to right top to down)
         index = get_square_index_by_coordinates(cell.row_coord, cell.column_coord)
         if len(self.squares) < index:
-            return CellAggregator(index)
-        else:
-            return self.squares[index - 1]
+            square = CellAggregator(index)
+            self.squares.append(square)
+
+        return self.squares[index - 1]
 
     # constructor
     def __init__(self):
@@ -142,21 +145,21 @@ class Board(object):
 
                 # the square of the table
                 square = self.get_square_by_cell(cell)
-                self.squares.append(square)
                 # the cell in the square
                 square.add_cell(cell)
 
+    # cell print
+    def compose_cell_print(self, cell):
+        return '|' + (str(cell.value) if cell.value else '') + '|' + ('+' if not cell.column_coord % 3 else '')
+
     # print table on console
     def display(self):
-        def compose_cell_print(cell):
-            return '|' + (str(cell.value) if cell.value else '') + '|' + ('+' if not cell.column_coord % 3 else '')
-
         cell_index = 0
         for i in range(9):
             strline = ''
             for j in range(9):
                 cell = self.cells[cell_index]
-                strline += compose_cell_print(cell)
+                strline += self.compose_cell_print(cell)
                 cell_index += 1
 
             print(strline)
@@ -164,16 +167,16 @@ class Board(object):
                 print('+' * 55)
 
     # recalculate available value variants (cell, row, column, square)
-    def recalculate_value_variants(self, cell, full_recalculation = False):
+    def recalculate_value_variants(self, cell):
         # row
         row = self.rows[cell.row_coord - 1]
-        row.recalculate_value_variants(full_recalculation)
+        row.recalculate_value_variants(cell.value)
         # column
         column = self.columns[cell.column_coord - 1]
-        column.recalculate_value_variants(full_recalculation)
+        column.recalculate_value_variants(cell.value)
         # square
         square = self.get_square_by_cell(cell)
-        square.recalculate_value_variants(full_recalculation)
+        square.recalculate_value_variants(cell.value)
         if cell.value:
             cell.value_variants = []
         else:
@@ -185,7 +188,7 @@ class Board(object):
         cell = self.cells[cell_index - 1]
         cell.set_value(value)
         #  recalculate available value variants (cell, row, column, square)
-        self.recalculate_value_variants(cell, True if not value else False)
+        self.recalculate_value_variants(cell)
 
     # print cell aggregators' value variants on console
     def print_cell_aggregators_value_variants(self, cell):
@@ -195,6 +198,7 @@ class Board(object):
         print('row.value_variants:', row.value_variants)
         print('col.value_variants:', column.value_variants)
         print('sqr.value_variants:', square.value_variants)
+        print('cell.value_variants:', cell.value_variants)
 
     def cells_to_json(self):
         with open('cells.json', 'w') as f:
@@ -205,3 +209,19 @@ class Board(object):
             json_cells_list = json.load(f)
             for json_cell in json_cells_list:
                 self.set_cell_value(json_cell['row_coord'], json_cell['column_coord'], json_cell['value'])
+
+    def first_single_variant_cell(self):
+        for c in self.cells:
+            if len(c.value_variants) == 1:
+                return c
+        return None
+
+    def find_solution(self):
+        while True:
+            cell = self.first_single_variant_cell()
+            if not cell:
+                break
+            self.set_cell_value(cell.row_coord, cell.column_coord, next(iter(cell.value_variants)))
+
+
+
