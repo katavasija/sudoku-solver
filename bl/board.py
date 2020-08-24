@@ -210,18 +210,49 @@ class Board(object):
             for json_cell in json_cells_list:
                 self.set_cell_value(json_cell['row_coord'], json_cell['column_coord'], json_cell['value'])
 
+    def has_variant_cells(self):
+        for c in self.cells:
+            if len(c.value_variants) > 0:
+                return True
+        return False
+
     def first_single_variant_cell(self):
         for c in self.cells:
             if len(c.value_variants) == 1:
                 return c
         return None
 
-    def find_solution(self):
+    def set_first_value_variant_in_cell(self, cell):
+        self.set_cell_value(cell.row_coord, cell.column_coord, next(iter(cell.value_variants)))
+
+    def fill_all_single_variant_cells(self):
         while True:
             cell = self.first_single_variant_cell()
             if not cell:
                 break
-            self.set_cell_value(cell.row_coord, cell.column_coord, next(iter(cell.value_variants)))
+            self.set_first_value_variant_in_cell(cell)
 
+    # first cell with minimal variants length
+    def find_first_minimal_variant_cell(self):
+        cell = None
+        min_variant_length = 10
+        next_cell_index = 0
+        while next_cell_index < len(self.cells):
+            next_cell = self.cells[next_cell_index]
+            if next_cell.value_variants and min_variant_length > len(next_cell.value_variants):
+                cell = next_cell
+            next_cell_index += 1
 
+        return cell
+
+    # define value for the first cell with minimal variants length
+    def set_first_minimal_variant_cell_value(self):
+        min_variant_cell = self.find_first_minimal_variant_cell()
+        if min_variant_cell:
+            self.set_first_value_variant_in_cell(min_variant_cell)
+
+    def find_solution(self):
+        while self.has_variant_cells():
+            self.fill_all_single_variant_cells()
+            self.set_first_minimal_variant_cell_value()
 
