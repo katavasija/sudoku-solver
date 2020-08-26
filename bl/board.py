@@ -225,13 +225,6 @@ class Board(object):
     def set_first_value_variant_in_cell(self, cell):
         self.set_cell_value(cell.row_coord, cell.column_coord, next(iter(cell.value_variants)))
 
-    def fill_all_single_variant_cells(self):
-        while True:
-            cell = self.first_single_variant_cell()
-            if not cell:
-                break
-            self.set_first_value_variant_in_cell(cell)
-
     # first cell with minimal variants length
     def find_first_minimal_variant_cell(self):
         cell = None
@@ -239,8 +232,10 @@ class Board(object):
         next_cell_index = 0
         while next_cell_index < len(self.cells):
             next_cell = self.cells[next_cell_index]
-            if next_cell.value_variants and min_variant_length > len(next_cell.value_variants):
+            value_variants_len = len(next_cell.value_variants)
+            if next_cell.value_variants and min_variant_length > value_variants_len:
                 cell = next_cell
+                min_variant_length = value_variants_len
             next_cell_index += 1
 
         return cell
@@ -253,6 +248,5 @@ class Board(object):
 
     def find_solution(self):
         while self.has_variant_cells():
-            self.fill_all_single_variant_cells()
             self.set_first_minimal_variant_cell_value()
 
